@@ -1,13 +1,10 @@
-
---
-> # 📌 Attribution & Origin (Nguồn Gốc Dự Án)
-> This repository is extended and adapted from the official research codebase:  
-> **[deeplearning-wisc/understanding_lp](https://github.com/deeplearning-wisc/understanding_lp)**  
-> *(Paper: "Understanding Language Prior of LVLMs by Contrasting Chain-of-Embedding", ICLR 2026)*  
-> by Lin Long, Changdae Oh, Seongheon Park, and Sharon Li (University of Wisconsin–Madison).
->
-> **Core Extensions in this Repository:**
-> We adapt the Chain-of-Embedding representation divergence methodology ($D_l$, VIP, TVI) to analyze **Multi-View Autonomous Driving Vision-Language Models** (specifically featuring **Question-Guided Token Routers**, **Gated Pooling Attention**, and ultra-compact **RepViT + T5** backbones on the nuScenes / DriveLM dataset).
+# 📌 Attribution & Origin (Nguồn Gốc Dự Án)
+This repository is extended and adapted from the official research codebase:  
+**[deeplearning-wisc/understanding_lp](https://github.com/deeplearning-wisc/understanding_lp)**  
+*(Paper: "Understanding Language Prior of LVLMs by Contrasting Chain-of-Embedding", ICLR 2026)*  
+by Lin Long, Changdae Oh, Seongheon Park, and Sharon Li (University of Wisconsin–Madison).
+**Core Extensions in this Repository:**
+We adapt the Chain-of-Embedding representation divergence methodology ($D_l$, VIP, TVI) to analyze **Multi-View Autonomous Driving Vision-Language Models** (specifically featuring **Question-Guided Token Routers**, **Gated Pooling Attention**, and ultra-compact **RepViT + T5** backbones on the nuScenes / DriveLM dataset).
 
 ---
 
