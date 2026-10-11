@@ -219,6 +219,7 @@ def create_git_runner_notebook():
                     "    --output_dir /kaggle/working/outputs/ad_analysis \\\n",
                     "    --batch_size 16 \\\n",
                     "    --max_samples 500 \\\n",
+                    "    --target_branch decoder_start \\\n",
                     "    --device auto"
                 ]
             },

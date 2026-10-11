@@ -184,6 +184,7 @@ def run_kaggle_analysis_pipeline(
     vip_layer: int | str = "auto",
     model_name: str | None = None,
     create_zip: bool = True,
+    target_branch: str = "decoder_start",
 ) -> dict[str, Any]:
     """
     All-in-one Autonomous Driving Representation Analysis Runner:
@@ -255,6 +256,7 @@ def run_kaggle_analysis_pipeline(
         device=target_device,
         smoke=smoke,
         output_attentions=True,
+        target_branch=target_branch,
     )
 
     if target_device == "cuda":
@@ -272,6 +274,7 @@ def run_kaggle_analysis_pipeline(
         vip_layer=vip_layer,
         metric="cosine",
         dpi=300,
+        target_branch=target_branch,
     )
 
     # 5. Create Markdown Summary
@@ -340,6 +343,13 @@ def main():
     parser.add_argument("--vip", type=str, default="auto", help="VIP layer index ('auto' or int)")
     parser.add_argument("--model_name", type=str, default=None, help="Label for plots (optional, auto-derived from config)")
     parser.add_argument("--no_zip", action="store_true", help="Do not package into zip file")
+    parser.add_argument(
+        "--target_branch",
+        type=str,
+        default="decoder_start",
+        choices=["decoder_start", "encoder_last"],
+        help="Target extraction point: 'decoder_start' (T5 Decoder <pad> token) or 'encoder_last' (Encoder last token).",
+    )
 
     args = parser.parse_args()
 
@@ -360,6 +370,7 @@ def main():
         vip_layer=vip_val,
         model_name=args.model_name,
         create_zip=not args.no_zip,
+        target_branch=args.target_branch,
     )
 
 
