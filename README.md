@@ -1,12 +1,6 @@
-# Autonomous Driving VLM Representation Dynamics & Language Prior Analysis
 
-[![arXiv](https://img.shields.io/badge/arXiv-2509.23050-b31b1b.svg)](https://arxiv.org/abs/2509.23050)
-[![Upstream](https://img.shields.io/badge/Forked%20%2F%20Adapted%20From-deeplearning--wisc%2Funderstanding__lp-blue.svg)](https://github.com/deeplearning-wisc/understanding_lp)
-[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
-
----
-
-> ### 📌 Attribution & Origin (Nguồn Gốc Dự Án)
+--
+> # 📌 Attribution & Origin (Nguồn Gốc Dự Án)
 > This repository is extended and adapted from the official research codebase:  
 > **[deeplearning-wisc/understanding_lp](https://github.com/deeplearning-wisc/understanding_lp)**  
 > *(Paper: "Understanding Language Prior of LVLMs by Contrasting Chain-of-Embedding", ICLR 2026)*  
