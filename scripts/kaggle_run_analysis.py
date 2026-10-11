@@ -56,9 +56,31 @@ def resolve_environment() -> dict[str, Any]:
 
 
 def auto_discover_checkpoint(explicit_path: str | Path | None = None) -> Path | None:
-    """Auto-search for checkpoint file in Kaggle Input Datasets or local output dirs."""
-    if explicit_path and Path(explicit_path).exists():
-        return Path(explicit_path)
+    """
+    Auto-search for checkpoint file in Kaggle Input Datasets, local output dirs,
+    or download directly from Hugging Face Hub (e.g. 'username/repo/file.pt').
+    """
+    if explicit_path:
+        p = Path(explicit_path)
+        if p.exists():
+            return p
+
+        # Check if explicit_path has Hugging Face repo format (e.g. 'username/repo_name/file.pt')
+        raw_str = str(explicit_path).replace("\\", "/").strip()
+        parts = [part for part in raw_str.split("/") if part]
+        if len(parts) >= 3:
+            repo_id = f"{parts[0]}/{parts[1]}"
+            filename = "/".join(parts[2:])
+            try:
+                from huggingface_hub import hf_hub_download
+
+                token = os.environ.get("HF_TOKEN")
+                print(f"[Checkpoint] Downloading from Hugging Face Hub: {repo_id} ({filename})...")
+                downloaded_file = hf_hub_download(repo_id=repo_id, filename=filename, token=token)
+                print(f"[Checkpoint] Successfully downloaded to: {downloaded_file}")
+                return Path(downloaded_file)
+            except Exception as exc:
+                print(f"[Checkpoint] Failed downloading from Hugging Face Hub: {exc}")
 
     # Search candidates in Kaggle and local directories
     search_patterns = [

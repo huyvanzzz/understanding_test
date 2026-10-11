@@ -1,71 +1,91 @@
-# Understanding Language Prior of LVLMs by Contrasting Chain-of-Embedding
+# Autonomous Driving VLM Representation Dynamics & Language Prior Analysis
+
 [![arXiv](https://img.shields.io/badge/arXiv-2509.23050-b31b1b.svg)](https://arxiv.org/abs/2509.23050)
+[![Upstream](https://img.shields.io/badge/Forked%20%2F%20Adapted%20From-deeplearning--wisc%2Funderstanding__lp-blue.svg)](https://github.com/deeplearning-wisc/understanding_lp)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
-> by [Lin Long](https://llong-cs.github.io/llongme/), [Changdae Oh](https://changdaeoh.github.io/), [Seongheon Park](https://seongheon-96.github.io/), and [Sharon Li](https://pages.cs.wisc.edu/~sharonli/).
+---
 
+> ### 📌 Attribution & Origin (Nguồn Gốc Dự Án)
+> This repository is extended and adapted from the official research codebase:  
+> **[deeplearning-wisc/understanding_lp](https://github.com/deeplearning-wisc/understanding_lp)**  
+> *(Paper: "Understanding Language Prior of LVLMs by Contrasting Chain-of-Embedding", ICLR 2026)*  
+> by Lin Long, Changdae Oh, Seongheon Park, and Sharon Li (University of Wisconsin–Madison).
+>
+> **Core Extensions in this Repository:**
+> We adapt the Chain-of-Embedding representation divergence methodology ($D_l$, VIP, TVI) to analyze **Multi-View Autonomous Driving Vision-Language Models** (specifically featuring **Question-Guided Token Routers**, **Gated Pooling Attention**, and ultra-compact **RepViT + T5** backbones on the nuScenes / DriveLM dataset).
 
-## Overview
+---
 
-This repository provides tools and scripts to analyze the language prior in Vision-Language Models by examining representation distances across different layers.
+## 🚀 Key Extensions for Autonomous Driving VLMs
 
-## Quick Start
+1. **Multi-View 6-Camera Fusion Support:**
+   - Evaluates multi-camera input fusion modules (Question-Guided Token Router nén 294 tokens xuống $K=49$ tokens, hoặc Gated Pooling Attention baseline).
+2. **Dual-Pass Representation Extraction ($VL$ vs $L$):**
+   - **Multimodal Pass ($VL$):** Cung cấp đủ 6 góc camera + câu hỏi lái xe $\rightarrow$ Trích xuất vector ẩn từng tầng $h_l^{VL}$.
+   - **Blind Language Pass ($L$):** "Bịt mắt" mô hình (chỉ đưa văn bản câu hỏi) $\rightarrow$ Trích xuất vector ẩn $h_l^L$ để đo định kiến ngôn ngữ (Language Prior).
+3. **Automated Representation Metrics:**
+   - **Layer-wise Divergence Curve ($D_l$):** Đo khoảng cách phân kỳ theo từng tầng mạng giữa trạng thái có ảnh và không ảnh.
+   - **Visual Integration Point (VIP):** Tự động phát hiện tầng mạng mà thông tin hình ảnh thực sự bắt đầu được hòa trộn vào ngôn ngữ.
+   - **Total Visual Integration (TVI) & TVI Gap:** Định lượng mức độ phụ thuộc vào thị giác ($D_{VT}$) so với mức độ thiên kiến ngôn ngữ ($D_T$).
+4. **1-Click Kaggle GPU Automation:**
+   - Tối ưu hóa chạy 1-click trên Kaggle GPU (Tesla T4 x2 / P100) thông qua Git clone / Git pull tự động (`notebooks/kaggle_git_ad_analysis.ipynb` và `scripts/kaggle_run_analysis.py`).
 
-### 1. Data Preparation
+---
 
-First, set up the environment variable for your data path:
+## 📁 Repository Structure
 
-```bash
-export DATA_PATH=/path/to/your/data
+```text
+understanding_lp/
+├── analysis/                 # Stage 3: Divergence calculation, VIP & TVI metrics, Matplotlib visualizer
+│   ├── divergence_engine.py  # Layer-wise Cosine/Euclidean divergence, auto-VIP, TVI statistics
+│   └── visualizer.py         # Publication-grade figures (PNG 300 DPI, PDF 600 DPI)
+├── configs/                  # Model configurations (Router K=49, GPA, RepViT, T5-mini)
+├── docs/                     # Research reports, verification logs & quickstart guides
+│   ├── kaggle_quickstart_guide.md
+│   └── repo_analysis_report.md
+├── generation/               # Stage 2: Dual-pass extraction (Multimodal VL vs Blind L)
+│   └── gen_ad_vlm.py         # Extraction engine supporting feature cache (.memmap) and JSONL
+├── models/ad_vlm/            # Stage 1: Self-contained AD-VLM architecture
+│   ├── router.py             # Question-Guided Token Router with Visual Self-Attention
+│   ├── gpa.py                # Gated Pooling Attention baseline
+│   ├── vlm.py                # EfficientVLMForAD model wrapper
+│   └── loader.py             # Config parser and weight loader
+├── notebooks/                # Kaggle notebooks
+│   ├── kaggle_git_ad_analysis.ipynb    # Git-based 1-click execution on Kaggle GPU
+│   └── kaggle_ad_analysis_demo.ipynb   # Standalone demo notebook
+├── scripts/
+│   └── kaggle_run_analysis.py          # 1-Click all-in-one analysis runner
+└── tests/                    # Automated verification test suites (Stage 1 to 4)
 ```
 
-Create dataset files in JSONL format under the `DATA_PATH` directory. Each dataset should be named as `{dataset}.jsonl`, where each line contains:
+---
 
-- `image`: the image path or base64 string starting with "data:image/"
-- `instruction`: the instruction text
-- `target_tokens`: the target tokens (e.g., ["Yes", "No"] or ["A", "B", "C", "D"])
-- `other keys`: additional keys you want to include
+## ⚡ Quick Start
 
-**Example JSONL entry:**
-```json
-{"image": "/path/to/image.jpg", "instruction": "What color is the sky?", "target_tokens": ["A", "B", "C", "D"], "answer": "A"}
+### 1. Chạy trên Kaggle GPU (Khuyến nghị)
+1. Mở Kaggle $\rightarrow$ **Create New Notebook** $\rightarrow$ **File** $\rightarrow$ **Import Notebook** $\rightarrow$ Chọn `notebooks/kaggle_git_ad_analysis.ipynb`.
+2. Bật **GPU T4 x2** và **Internet On**.
+3. Điền URL GitHub repo của bạn vào ô số 1 và bấm **Run All**.
+
+### 2. Chạy thử nghiệm trên máy cá nhân (CPU Smoke Test)
+```powershell
+python scripts/kaggle_run_analysis.py \
+    --config configs/repvit_t5_efficient_mini_kaggle_2gpu_router_vsa_k49.yaml \
+    --smoke
 ```
 
-We provide reference data processing scripts for several datasets in the `data_preparation/` folder.
+---
 
-### 2. Generate Hidden States
+## 📚 Citation & Upstream References
 
-Generate hidden states for your model. Using Qwen2.5-VL as an example:
+Nếu bạn sử dụng mã nguồn hoặc phương pháp luận này, vui lòng trích dẫn bài báo gốc của nhóm tác giả:
 
-```bash
-CUDA_VISIBLE_DEVICES=0 python generation/gen_qwenvl.py --dataset mme
+```bibtex
+@article{long2025understanding,
+  title={Understanding Language Prior of LVLMs by Contrasting Chain-of-Embedding},
+  author={Long, Lin and Oh, Changdae and Park, Seongheon and Li, Sharon},
+  journal={arXiv preprint arXiv:2509.23050},
+  year={2025}
+}
 ```
-
-**Multi-GPU Support:**
-This step supports multi-GPU parallel generation. After generation is complete, you need to merge the results:
-
-```bash
-python utils/merge.py
-```
-
-### 3. Plot Representation Distance
-
-Use the plotting script to visualize representation distance curves:
-
-```bash
-python plot_divergences.py --model qwenvl --dataset mme
-```
-
-**Available options:**
-- `--model`: Model name (e.g., qwenvl, llava, gemma)
-- `--dataset`: Dataset name (e.g., mme, mmbench, vlind)
-- `--data_path`: Path to the data directory (default: "data")
-
-## Requirements
-
-Install the required dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-"# understanding_test" 
-"# understanding_test" 
