@@ -247,6 +247,102 @@ class EfficientVLMForAD(nn.Module):
 
         return final_hidden_states, final_visual_attentions
 
+    def extract_decoder_start_representations(
+        self,
+        *,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+        visual_features: torch.Tensor | None = None,
+        blind_mode: bool = False,
+        output_attentions: bool = False,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        """
+        Extract hidden states of the step-0 decoder start token (<pad>) across all decoder layers.
+        Also extracts query-to-vision Cross-Attention weights from <pad> to visual tokens.
+
+        Returns:
+            hidden_states: Tensor [B, num_decoder_layers + 1, D]
+            visual_attentions: Tensor [B, num_decoder_layers] or None
+        """
+        inputs_embeds, combined_mask, _ = self.prepare_multimodal_embeddings(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            visual_features=visual_features,
+            blind_mode=blind_mode,
+        )
+
+        batch_size = inputs_embeds.shape[0]
+        device = inputs_embeds.device
+        decoder_start_token_id = getattr(self.text_model.config, "decoder_start_token_id", 0) or 0
+        decoder_input_ids = torch.full((batch_size, 1), decoder_start_token_id, dtype=torch.long, device=device)
+
+        orig_attn_impl = getattr(self.text_model.config, "_attn_implementation", None)
+        if output_attentions:
+            self.text_model.config._attn_implementation = "eager"
+
+        try:
+            outputs = self.text_model(
+                inputs_embeds=inputs_embeds,
+                attention_mask=combined_mask,
+                decoder_input_ids=decoder_input_ids,
+                output_hidden_states=True,
+                output_attentions=output_attentions,
+                return_dict=True,
+            )
+        finally:
+            if output_attentions and orig_attn_impl is not None:
+                self.text_model.config._attn_implementation = orig_attn_impl
+
+        # decoder_hidden_states is a tuple of (num_decoder_layers + 1) tensors, each [B, 1, D]
+        # Position 0 corresponds to the start-token <pad>
+        decoder_states = [layer_tensor[:, 0, :].detach().cpu().to(torch.float32) for layer_tensor in outputs.decoder_hidden_states]
+        final_hidden_states = torch.stack(decoder_states, dim=1)  # [B, num_decoder_layers + 1, D]
+
+        final_visual_attentions = None
+        if output_attentions and outputs.cross_attentions and not blind_mode and visual_features is not None:
+            layer_attn_weights = []
+            k_vis = self.visual_token_len
+            for layer_ca in outputs.cross_attentions:
+                if layer_ca is not None:
+                    # layer_ca: [B, num_heads, 1, seq_len]
+                    ca_vis = layer_ca[:, :, 0, :k_vis]  # [B, num_heads, K]
+                    vis_weight = ca_vis.sum(dim=-1).mean(dim=1)  # sum over K tokens, mean over heads -> [B]
+                    layer_attn_weights.append(vis_weight.detach().cpu().to(torch.float32))
+            if layer_attn_weights:
+                final_visual_attentions = torch.stack(layer_attn_weights, dim=1)  # [B, num_decoder_layers]
+
+        return final_hidden_states, final_visual_attentions
+
+    def extract_representations(
+        self,
+        *,
+        target_branch: str = "decoder_start",
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+        visual_features: torch.Tensor | None = None,
+        blind_mode: bool = False,
+        output_attentions: bool = False,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        """Unified representation extraction dispatcher."""
+        if target_branch == "decoder_start":
+            return self.extract_decoder_start_representations(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                visual_features=visual_features,
+                blind_mode=blind_mode,
+                output_attentions=output_attentions,
+            )
+        elif target_branch == "encoder_last":
+            return self.extract_last_token_representations(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                visual_features=visual_features,
+                blind_mode=blind_mode,
+                output_attentions=output_attentions,
+            )
+        else:
+            raise ValueError(f"Unknown target_branch: {target_branch}. Must be 'decoder_start' or 'encoder_last'.")
+
     def forward(
         self,
         *,
