@@ -8,4 +8,4 @@ data/
 *.zip
 *.memmap
 .pytest_cache/
-
+docs/
