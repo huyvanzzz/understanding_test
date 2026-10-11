@@ -74,13 +74,30 @@ def download_and_prepare_drivelm(
 ) -> Path:
     """
     Download lightweight QA JSON annotations (~5MB) from Hugging Face and format as jsonl.
-    Requires HF_TOKEN if repo is gated or private.
+    Multi-layer token resolution: argument -> os.environ['HF_TOKEN'] -> Kaggle Secrets.
     """
-    token = token or os.environ.get("HF_TOKEN")
+    if not token:
+        token = os.environ.get("HF_TOKEN")
+
+    if not token:
+        try:
+            from kaggle_secrets import UserSecretsClient
+
+            token = UserSecretsClient().get_secret("HF_TOKEN")
+            if token:
+                print("[Auth] Successfully retrieved HF_TOKEN directly from Kaggle Secrets!")
+        except Exception:
+            pass
+
     out_path = Path(output_file)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"[DriveLM] Downloading QA annotations from '{repo_id}' (split={split})...")
+    if token:
+        print("[DriveLM] Authenticated request using HF_TOKEN (Access to Private/Gated repo enabled).")
+    else:
+        print("[DriveLM Warning] No HF_TOKEN provided. Download may fail if repo is private or gated.")
+
     local_dir = Path(
         snapshot_download(
             repo_id=repo_id,
@@ -124,9 +141,15 @@ def main():
     parser.add_argument("--repo_id", type=str, default="minhdang0901/drivelm-nuscenes-v1-0", help="Hugging Face Dataset repo ID")
     parser.add_argument("--split", type=str, default="test", choices=["train", "val", "test"], help="Dataset split")
     parser.add_argument("--output", type=str, default="data/test_qa.jsonl", help="Output JSONL path")
+    parser.add_argument("--token", type=str, default=None, help="Hugging Face authentication token")
     args = parser.parse_args()
 
-    download_and_prepare_drivelm(repo_id=args.repo_id, split=args.split, output_file=args.output)
+    download_and_prepare_drivelm(
+        repo_id=args.repo_id,
+        split=args.split,
+        output_file=args.output,
+        token=args.token,
+    )
 
 
 if __name__ == "__main__":
