@@ -78,7 +78,7 @@ def plot_divergence_curve(
             markersize=8,
             markeredgecolor="white",
             markeredgewidth=1.5,
-            label=f"$D_\\text{{T}}$ (Avg TVI={dt_tvi:.3f}) [n={dt_count}]",
+            label=f"$D_{{T}}$ (Avg TVI={dt_tvi:.3f}) [n={dt_count}]",
             zorder=3,
         )
         ax.fill_between(
@@ -107,7 +107,7 @@ def plot_divergence_curve(
             markersize=8,
             markeredgecolor="white",
             markeredgewidth=1.5,
-            label=f"$D_\\text{{VT}}$ (Avg TVI={dvt_tvi:.3f}) [n={dvt_count}]",
+            label=f"$D_{{VT}}$ (Avg TVI={dvt_tvi:.3f}) [n={dvt_count}]",
             zorder=3,
         )
         ax.fill_between(
@@ -152,7 +152,7 @@ def plot_divergence_curve(
     # Styling Axes
     ax.set_title(title, fontsize=16, fontweight="bold", pad=15, color="#2c3e50")
     ax.set_xlabel("T5 Encoder Layer Depth", fontsize=13, fontweight="600", labelpad=10, color="#34495e")
-    ax.set_ylabel(r"Divergence $D_l = 1 - \text{Cosine}(h_l^{VL}, h_l^L)$", fontsize=13, fontweight="600", labelpad=10, color="#34495e")
+    ax.set_ylabel(r"Divergence $D_l = 1 - \mathrm{Cosine}(h_l^{VL}, h_l^L)$", fontsize=13, fontweight="600", labelpad=10, color="#34495e")
 
     ax.set_xticks(layers)
     ax.set_xticklabels(x_labels, fontsize=11, fontweight="500")
@@ -222,7 +222,7 @@ def plot_multi_panel_analysis(
             color="#1f77b4",
             linewidth=2.5,
             markersize=7,
-            label=f"$D_\\text{{T}}$ (TVI={tvi_info.get('dt_mean', 0.0):.3f})",
+            label=f"$D_{{T}}$ (TVI={tvi_info.get('dt_mean', 0.0):.3f})",
         )
         ax1.fill_between(layers, dt_mean - 0.5 * dt_std, dt_mean + 0.5 * dt_std, color="#1f77b4", alpha=0.18)
 
@@ -237,7 +237,7 @@ def plot_multi_panel_analysis(
             color="#d62728",
             linewidth=2.5,
             markersize=7,
-            label=f"$D_\\text{{VT}}$ (TVI={tvi_info.get('dvt_mean', 0.0):.3f})",
+            label=f"$D_{{VT}}$ (TVI={tvi_info.get('dvt_mean', 0.0):.3f})",
         )
         ax1.fill_between(layers, dvt_mean - 0.5 * dvt_std, dvt_mean + 0.5 * dvt_std, color="#d62728", alpha=0.18)
 
@@ -246,7 +246,7 @@ def plot_multi_panel_analysis(
 
     ax1.set_title("Panel A: Layer-wise Divergence $D_l$", fontsize=14, fontweight="bold", pad=12)
     ax1.set_xlabel("Encoder Layer Depth", fontsize=12, fontweight="600", labelpad=8)
-    ax1.set_ylabel(r"$D_l = 1 - \text{Cosine}(h_l^{VL}, h_l^L)$", fontsize=12, fontweight="600", labelpad=8)
+    ax1.set_ylabel(r"$D_l = 1 - \mathrm{Cosine}(h_l^{VL}, h_l^L)$", fontsize=12, fontweight="600", labelpad=8)
     ax1.set_xticks(layers)
     ax1.set_xticklabels(x_labels, fontsize=10)
     ax1.legend(loc="upper left", fontsize=10, framealpha=0.9)
@@ -267,7 +267,7 @@ def plot_multi_panel_analysis(
                 color="#1f77b4",
                 linewidth=2.5,
                 markersize=7,
-                label="$D_\\text{{T}}$ Visual Attention",
+                label=r"$D_{T}$ Visual Attention",
             )
         if dvt_count > 0 and len(va_data.get("dvt_mean", [])) > 0:
             ax2.plot(
@@ -277,7 +277,7 @@ def plot_multi_panel_analysis(
                 color="#d62728",
                 linewidth=2.5,
                 markersize=7,
-                label="$D_\\text{{VT}}$ Visual Attention",
+                label=r"$D_{VT}$ Visual Attention",
             )
 
         ax2.plot(
