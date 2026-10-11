@@ -182,6 +182,7 @@ def extract_dual_pass_representations(
     smoke: bool = False,
     max_new_tokens: int = 32,
     output_attentions: bool = True,
+    target_branch: str = "decoder_start",
 ) -> dict[str, Any]:
     """
     Core Dual-Pass Extraction Engine:
@@ -249,7 +250,8 @@ def extract_dual_pass_representations(
 
         with torch.no_grad():
             # --- Pass 1: VL Branch (Multimodal) ---
-            hs_vl, attn_vl = model.extract_last_token_representations(
+            hs_vl, attn_vl = model.extract_representations(
+                target_branch=target_branch,
                 input_ids=input_ids,
                 attention_mask=attention_mask,
                 visual_features=visual_features,
@@ -268,7 +270,8 @@ def extract_dual_pass_representations(
             preds_vl = tokenizer.batch_decode(gen_ids_vl, skip_special_tokens=True)
 
             # --- Pass 2: L Branch (Blind / Pure Text) ---
-            hs_l, _ = model.extract_last_token_representations(
+            hs_l, _ = model.extract_representations(
+                target_branch=target_branch,
                 input_ids=input_ids,
                 attention_mask=attention_mask,
                 visual_features=None,
@@ -333,6 +336,7 @@ def extract_dual_pass_representations(
     dt_ratio = (same_count / total_samples) * 100 if total_samples > 0 else 0.0
 
     summary = {
+        "target_branch": target_branch,
         "total_samples": total_samples,
         "d_t_count": same_count,
         "d_vt_count": diff_count,
@@ -348,6 +352,7 @@ def extract_dual_pass_representations(
     print("\n" + "=" * 60)
     print("EXTRACTION SUMMARY")
     print("=" * 60)
+    print(f"Target branch: {target_branch}")
     print(f"Total samples: {total_samples}")
     print(f"D_T samples (Language Prior Dominant - Same): {same_count} ({dt_ratio:.1f}%)")
     print(f"D_VT samples (Visual Dependent - Different): {diff_count} ({100.0 - dt_ratio:.1f}%)")
@@ -358,6 +363,10 @@ def extract_dual_pass_representations(
     print("=" * 60)
 
     return summary
+
+
+# Alias for backward compatibility
+extract_ad_vlm_representations = extract_dual_pass_representations
 
 
 def main():
@@ -373,6 +382,13 @@ def main():
     parser.add_argument("--smoke", action="store_true", help="Run with synthetic smoke data on CPU")
     parser.add_argument("--max_new_tokens", type=int, default=32, help="Max generated tokens for prediction")
     parser.add_argument("--no_attentions", action="store_true", help="Disable visual attention tracking")
+    parser.add_argument(
+        "--target_branch",
+        type=str,
+        default="decoder_start",
+        choices=["decoder_start", "encoder_last"],
+        help="Extraction point: 'decoder_start' (T5 Decoder <pad> token) or 'encoder_last' (Encoder last token).",
+    )
 
     args = parser.parse_args()
 
@@ -388,6 +404,7 @@ def main():
         smoke=args.smoke,
         max_new_tokens=args.max_new_tokens,
         output_attentions=not args.no_attentions,
+        target_branch=args.target_branch,
     )
 
 
