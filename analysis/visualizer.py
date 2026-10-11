@@ -36,10 +36,12 @@ def _layer_labels(num_layers: int) -> list[str]:
 
 def plot_divergence_curve(
     metrics: dict[str, Any],
-    title: str = "Layer-wise Representation Divergence ($D_l$)",
+    title: str | None = None,
     save_path_prefix: str | Path = "outputs/ad_analysis/divergence_curve",
     figsize: tuple[int, int] = (11, 6),
     dpi: int = 300,
+    target_branch: str | None = None,
+    model_name: str | None = None,
 ) -> dict[str, str]:
     """
     Generate publication-grade primary divergence curve:
@@ -50,6 +52,15 @@ def plot_divergence_curve(
     """
     _apply_plot_style()
     fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+
+    if target_branch is None:
+        target_branch = metrics.get("target_branch", "decoder_start")
+    is_decoder = (target_branch == "decoder_start")
+
+    if title is None:
+        prefix_title = f"{model_name}\n" if model_name else ""
+        branch_desc = "T5 Decoder Start-Token" if is_decoder else "T5 Encoder Last-Token"
+        title = f"{prefix_title}{branch_desc} Divergence Curve ($D_l$)"
 
     num_layers = metrics.get("num_layers", len(metrics["divergence_per_layer_all"]["mean"]))
     layers = list(range(num_layers))
@@ -151,8 +162,14 @@ def plot_divergence_curve(
 
     # Styling Axes
     ax.set_title(title, fontsize=16, fontweight="bold", pad=15, color="#2c3e50")
-    ax.set_xlabel("T5 Encoder Layer Depth", fontsize=13, fontweight="600", labelpad=10, color="#34495e")
-    ax.set_ylabel(r"Divergence $D_l = 1 - \mathrm{Cosine}(h_l^{VL}, h_l^L)$", fontsize=13, fontweight="600", labelpad=10, color="#34495e")
+    ax_xlabel = "T5 Decoder Layer Depth" if is_decoder else "T5 Encoder Layer Depth"
+    ax.set_xlabel(ax_xlabel, fontsize=13, fontweight="600", labelpad=10, color="#34495e")
+    ax_ylabel = (
+        r"Divergence $D_l = 1 - \mathrm{Cosine}(h_{l, \mathrm{dec}}^{VL}, h_{l, \mathrm{dec}}^L)$"
+        if is_decoder
+        else r"Divergence $D_l = 1 - \mathrm{Cosine}(h_l^{VL}, h_l^L)$"
+    )
+    ax.set_ylabel(ax_ylabel, fontsize=13, fontweight="600", labelpad=10, color="#34495e")
 
     ax.set_xticks(layers)
     ax.set_xticklabels(x_labels, fontsize=11, fontweight="500")
@@ -188,18 +205,29 @@ def plot_divergence_curve(
 
 def plot_multi_panel_analysis(
     metrics: dict[str, Any],
-    title: str = "Multimodal Representation & Attention Dynamics",
+    title: str | None = None,
     save_path_prefix: str | Path = "outputs/ad_analysis/multi_panel_analysis",
     figsize: tuple[int, int] = (16, 6),
     dpi: int = 300,
+    target_branch: str | None = None,
+    model_name: str | None = None,
 ) -> dict[str, str]:
     """
     Generate side-by-side 2-panel publication figure:
     - Panel A: Layer-wise Representation Divergence D_l
-    - Panel B: Visual Attention Weight across Encoder Blocks
+    - Panel B: Visual Attention / Cross-Attention Weight
     """
     _apply_plot_style()
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
+
+    if target_branch is None:
+        target_branch = metrics.get("target_branch", "decoder_start")
+    is_decoder = (target_branch == "decoder_start")
+
+    if title is None:
+        model_part = f"{model_name}: " if model_name else ""
+        branch_desc = "T5 Decoder Start-Token" if is_decoder else "T5 Encoder Last-Token"
+        title = f"{model_part}{branch_desc} Representation & Attention Analysis"
 
     num_layers = metrics.get("num_layers", len(metrics["divergence_per_layer_all"]["mean"]))
     layers = list(range(num_layers))
@@ -245,19 +273,29 @@ def plot_multi_panel_analysis(
         ax1.axvline(x=vip_layer, color="#2c3e50", linestyle="--", linewidth=1.5, alpha=0.8, label=f"VIP (L{vip_layer})")
 
     ax1.set_title("Panel A: Layer-wise Divergence $D_l$", fontsize=14, fontweight="bold", pad=12)
-    ax1.set_xlabel("Encoder Layer Depth", fontsize=12, fontweight="600", labelpad=8)
-    ax1.set_ylabel(r"$D_l = 1 - \mathrm{Cosine}(h_l^{VL}, h_l^L)$", fontsize=12, fontweight="600", labelpad=8)
+    ax1_xlabel = "T5 Decoder Layer Depth" if is_decoder else "T5 Encoder Layer Depth"
+    ax1.set_xlabel(ax1_xlabel, fontsize=12, fontweight="600", labelpad=8)
+    ax1_ylabel = (
+        r"$D_l = 1 - \mathrm{Cosine}(h_{l, \mathrm{dec}}^{VL}, h_{l, \mathrm{dec}}^L)$"
+        if is_decoder
+        else r"$D_l = 1 - \mathrm{Cosine}(h_l^{VL}, h_l^L)$"
+    )
+    ax1.set_ylabel(ax1_ylabel, fontsize=12, fontweight="600", labelpad=8)
     ax1.set_xticks(layers)
     ax1.set_xticklabels(x_labels, fontsize=10)
     ax1.legend(loc="upper left", fontsize=10, framealpha=0.9)
     ax1.grid(True, linestyle="--", alpha=0.35)
 
-    # ==================== PANEL B: VISUAL ATTENTION ====================
+    # ==================== PANEL B: VISUAL / CROSS ATTENTION ====================
     va_data = metrics.get("visual_attention_weights", {})
     if va_data and "all_mean" in va_data and len(va_data["all_mean"]) > 0:
         num_attn_blocks = len(va_data["all_mean"])
         attn_x = list(range(1, num_attn_blocks + 1))
         attn_labels = [f"Block {i}" for i in attn_x]
+
+        dt_label = r"$D_{T}$ Cross-Attention" if is_decoder else r"$D_{T}$ Visual Attention"
+        dvt_label = r"$D_{VT}$ Cross-Attention" if is_decoder else r"$D_{VT}$ Visual Attention"
+        all_label = "All Samples Cross-Attention" if is_decoder else "All Samples Attention"
 
         if dt_count > 0 and len(va_data.get("dt_mean", [])) > 0:
             ax2.plot(
@@ -267,7 +305,7 @@ def plot_multi_panel_analysis(
                 color="#1f77b4",
                 linewidth=2.5,
                 markersize=7,
-                label=r"$D_{T}$ Visual Attention",
+                label=dt_label,
             )
         if dvt_count > 0 and len(va_data.get("dvt_mean", [])) > 0:
             ax2.plot(
@@ -277,7 +315,7 @@ def plot_multi_panel_analysis(
                 color="#d62728",
                 linewidth=2.5,
                 markersize=7,
-                label=r"$D_{VT}$ Visual Attention",
+                label=dvt_label,
             )
 
         ax2.plot(
@@ -287,17 +325,23 @@ def plot_multi_panel_analysis(
             linestyle=":",
             color="#7b1fa2",
             linewidth=1.8,
-            label="All Samples Attention",
+            label=all_label,
         )
         ax2.set_xticks(attn_x)
         ax2.set_xticklabels(attn_labels, fontsize=10)
     else:
-        # Fallback if no attention weights extracted
-        ax2.text(0.5, 0.5, "Visual Attention Tensor Not Provided", ha="center", va="center", fontsize=12, color="#7f8c8d")
+        ax2.text(0.5, 0.5, "Attention Tensor Not Provided", ha="center", va="center", fontsize=12, color="#7f8c8d")
 
-    ax2.set_title("Panel B: Query-to-Vision Attention Weight", fontsize=14, fontweight="bold", pad=12)
-    ax2.set_xlabel("T5 Transformer Block", fontsize=12, fontweight="600", labelpad=8)
-    ax2.set_ylabel(r"Attention Weight $\sum \alpha_{last \to vis}$", fontsize=12, fontweight="600", labelpad=8)
+    panel_b_title = "Panel B: Decoder Cross-Attention to Vision" if is_decoder else "Panel B: Query-to-Vision Attention Weight"
+    ax2.set_title(panel_b_title, fontsize=14, fontweight="bold", pad=12)
+    ax2_xlabel = "T5 Decoder Transformer Block" if is_decoder else "T5 Transformer Block"
+    ax2.set_xlabel(ax2_xlabel, fontsize=12, fontweight="600", labelpad=8)
+    ax2_ylabel = (
+        r"Cross-Attention Weight $\sum \alpha_{pad \to vis}$"
+        if is_decoder
+        else r"Attention Weight $\sum \alpha_{last \to vis}$"
+    )
+    ax2.set_ylabel(ax2_ylabel, fontsize=12, fontweight="600", labelpad=8)
     ax2.legend(loc="upper left", fontsize=10, framealpha=0.9)
     ax2.grid(True, linestyle="--", alpha=0.35)
 

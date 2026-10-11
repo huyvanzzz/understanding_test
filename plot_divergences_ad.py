@@ -26,6 +26,7 @@ def run_divergence_analysis(
     vip_layer: int | str = "auto",
     metric: str = "cosine",
     dpi: int = 300,
+    target_branch: str | None = None,
 ) -> dict[str, Any]:
     """
     Core Stage 3 Analysis Pipeline:
@@ -39,7 +40,19 @@ def run_divergence_analysis(
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
-    print(f"\n[Stage 3] Loading representation tensors from: {in_path}")
+    # Auto-detect target_branch from summary.json if not explicitly provided
+    if target_branch is None:
+        summary_file = in_path / "summary.json"
+        if summary_file.exists():
+            try:
+                summary_data = json.loads(summary_file.read_text(encoding="utf-8"))
+                target_branch = summary_data.get("target_branch", "decoder_start")
+            except Exception:
+                target_branch = "decoder_start"
+        else:
+            target_branch = "decoder_start"
+
+    print(f"\n[Stage 3] Loading representation tensors from: {in_path} (branch: {target_branch})")
     vl_path = in_path / "hidden_states_vl.pt"
     l_path = in_path / "hidden_states_l.pt"
     agreements_path = in_path / "agreement_labels.pt"
@@ -73,6 +86,7 @@ def run_divergence_analysis(
         metric=metric,
     )
     metrics["model_name"] = model_name
+    metrics["target_branch"] = target_branch
 
     # 2. Render Publication-Grade Visualizations
     print("[Stage 3] Rendering publication-grade divergence figures...")
@@ -81,16 +95,18 @@ def run_divergence_analysis(
 
     curve_paths = plot_divergence_curve(
         metrics=metrics,
-        title=f"{model_name}\nLayer-wise Divergence Curve ($D_l$)",
         save_path_prefix=curve_prefix,
         dpi=dpi,
+        target_branch=target_branch,
+        model_name=model_name,
     )
 
     multi_paths = plot_multi_panel_analysis(
         metrics=metrics,
-        title=f"{model_name}: Representation & Attention Analysis",
         save_path_prefix=multi_prefix,
         dpi=dpi,
+        target_branch=target_branch,
+        model_name=model_name,
     )
 
     metrics["output_files"] = {
@@ -149,6 +165,13 @@ def main():
     parser.add_argument("--vip", type=str, default="auto", help="VIP layer index ('auto' or integer)")
     parser.add_argument("--metric", type=str, default="cosine", choices=["cosine", "euclidean"], help="Divergence metric")
     parser.add_argument("--dpi", type=int, default=300, help="DPI resolution for output PNG figures")
+    parser.add_argument(
+        "--target_branch",
+        type=str,
+        default=None,
+        choices=["decoder_start", "encoder_last"],
+        help="Target extraction point ('decoder_start' or 'encoder_last'). Auto-detected from summary.json if omitted.",
+    )
 
     args = parser.parse_args()
 
@@ -163,6 +186,7 @@ def main():
         vip_layer=vip_val,
         metric=args.metric,
         dpi=args.dpi,
+        target_branch=args.target_branch,
     )
 
 
